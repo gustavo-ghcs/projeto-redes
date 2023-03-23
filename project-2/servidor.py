@@ -1,19 +1,33 @@
 from socket import socket, AF_INET, SOCK_STREAM
 from threading import Thread
+import os
 
+IP_ADRESS = "127.0.0.1"
+PORT_NUMBER = 8014
+
+def serve_folder(folder_path):
+    array_de_arquivos = []
+    for dirpath, dirnames, filenames in os.walk(folder_path):
+        print(folder_path == dirpath)
+        print(filenames)
+        for filename in filenames:
+            array_de_arquivos.append(filename)
+    return array_de_arquivos
 # Trata as requisições dos clientes
+
 def handleRequest(clientSocket, clientAdress):
     clientRequest = clientSocket.recv(1024).decode() # Recebe a requisição do cliente
     print(f"O cliente requisitou: {clientRequest}")
 
-    print(clientRequest.split("\r\n")[0])
+    # print(clientRequest.split("\r\n")[0])
 
     header = clientRequest.split("\r\n")[0] # Recorta a header da solicitação
-    print(header, len(header))
+    # print(header, len(header))
     if len(header.split(" / ")) == 2:
         searched_file = "./Pages/index.html"
     else:
-        searched_file = header.split()[1][1:] # Descobre qual arquivo foi solicitado
+        searched_file = 'data/'+header.split()[1][1:] # Descobre qual arquivo foi solicitado
+
     print(f"Header: {header}, Seached file: {searched_file}")
     extension = searched_file.split(".")[-1] # Pega a extensão do arquivo solicitado
 
@@ -25,9 +39,17 @@ def handleRequest(clientSocket, clientAdress):
     try: # Tenta abrir o arquivo
         if is_binary:
             file = open(searched_file, 'rb')
+            print(file)
         else:
             file = open(searched_file, 'r', encoding='utf-8')
+        
         file_content = file.read() # Ler o conteúdo do arquivo
+        if searched_file == "./Pages/index.html":
+            for i in serve_folder('./data'):
+                file_content+= f"<br> <a target='_blank' href='/{i}'>{i}</a>"
+            file_content += '''</body>
+
+    </html>'''
 
     except FileNotFoundError: # Caso o arquivo não seja encontrado
 
@@ -50,10 +72,6 @@ def handleRequest(clientSocket, clientAdress):
 
     clientSocket.close() # Fecha conexão com o cliente
 
-
-IP_ADRESS = "127.0.0.1"
-PORT_NUMBER = 8000
-
 myServerSocket = socket(AF_INET, SOCK_STREAM) # Criação do socket
 myServerSocket.bind((IP_ADRESS, PORT_NUMBER)) # Vincula nosso servidor a derterminada porta
 myServerSocket.listen() # Servidor escutando por requisições
@@ -68,10 +86,6 @@ while True:
 
 
 myServerSocket.close() # Encerra o servidor
-
-
-
-
 
 # Para matar o processo
 # netstat -a -n -o | findstr 8000
