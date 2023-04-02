@@ -46,10 +46,8 @@ def handleRequest(clientSocket, clientAdress):
         file_content = file.read() # Ler o conteúdo do arquivo
         if searched_file == "./Pages/index.html":
             for i in serve_folder('./data'):
-                file_content+= f"<br> <a target='_blank' href='/{i}'>{i}</a>"
-            file_content += '''</body>
-
-    </html>'''
+                file_content+= f"<li> <a target='_blank' href='/{i}'>{i}</a> </li>"
+            file_content += '''</ul></body></html>'''
 
     except FileNotFoundError: # Caso o arquivo não seja encontrado
 
