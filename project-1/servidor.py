@@ -14,15 +14,14 @@ sock.bind((HOST, PORT))
 # Armazenar as conexões dos clientes
 conexoes = []
 
-
 def receber_mensagens(conn, addr):
     while True:
         # Esperar pela mensagem do cliente
         mensagem = conn.recv(1024)
 
         # Exibir a mensagem recebida
-        print('Mensagem recebida de', addr, ':', mensagem.decode('utf-8'))
-
+        print('Mensagem recebida de', addr, ':', mensagem.decode('utf-8'))  
+        
         # Enviar a mensagem para todos os clientes conectados
         for conexao in conexoes:
             if conexao != conn:
@@ -33,7 +32,6 @@ def receber_mensagens(conn, addr):
             conn.close()
             conexoes.remove(conn)
             break
-
 
 # Loop principal
 while True:
@@ -46,8 +44,7 @@ while True:
     # print(conexoes)
 
     # Criar uma thread para receber mensagens do cliente
-    thread_receber = threading.Thread(
-        target=receber_mensagens, args=(conn, addr))
+    thread_receber = threading.Thread(target=receber_mensagens, args=(conn, addr))
     thread_receber.start()
 
 # Fechar o socket
