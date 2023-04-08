@@ -42,12 +42,6 @@ def handleRequest(clientSocket, clientAdress):
             print(file)
         else:
             file = open(searched_file, 'r', encoding='utf-8')
-        
-        file_content = file.read() # Ler o conteúdo do arquivo
-        if searched_file == "./Pages/index.html":
-            for i in serve_folder('./data'):
-                file_content+= f"<li> <a target='_blank' href='/{i}'>{i}</a> </li>"
-            file_content += '''</ul></body></html>'''
 
     except FileNotFoundError: # Caso o arquivo não seja encontrado
 
@@ -61,6 +55,14 @@ def handleRequest(clientSocket, clientAdress):
     # Header com status de sucesso
     msgHeader = 'HTTP/1.1 200 OK \r\n' \
                     '\r\n'
+    
+    file_content = file.read() # Ler o conteúdo do arquivo
+    if searched_file == "./Pages/index.html":
+        print(serve_folder('./data'))
+        for i in serve_folder('./data'):
+            print(i)
+            file_content+= f"<li> <a target='_blank' href='/{i}'>{i}</a> </li>"
+        file_content += '''</ul></body></html>'''
 
     # Envia o arquivo solicitado para o cliente
     if is_binary:
