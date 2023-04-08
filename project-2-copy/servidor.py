@@ -75,7 +75,7 @@ def handleRequest(clientSocket, clientAdress):
                 #endereco = os.path.join(searched_file, i)
                 #endereco = searched_file
                 print("endereco file:", endereco)
-            file_content += f"<li> {tag} <a target='_blank' href='{endereco}'>{i}</a> </li>"
+            file_content += f"<li> {tag} <a target='_blank' href='/{endereco}'>{i}</a> </li>"
 
         file_content += '''</ul></body></html>'''
         file_content = file_content.encode()
