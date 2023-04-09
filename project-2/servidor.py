@@ -2,7 +2,6 @@ from socket import socket, AF_INET, SOCK_STREAM
 from threading import Thread
 import os
 
-
 # Lista o conteúdo de uma pasta no html
 def list_content(html, searched_file):
         tags = {"png": "&#128247;", "mp4": "&#127916;", "mpeg": "&#127925;", "pdf": "&#128212;"}
@@ -19,6 +18,11 @@ def list_content(html, searched_file):
         
         html += '''</ul></body></html>'''
         return html.encode()
+
+# Ler e retorna o conteúdo de um arquivo html
+def get_html_content(filename):
+    html_file = open(filename, 'r', encoding='utf-8')
+    return html_file.read()
 
 # Trata as requisições dos clientes
 def handleRequest(clientSocket, clientAdress):
@@ -49,7 +53,7 @@ def handleRequest(clientSocket, clientAdress):
 
         except FileNotFoundError: # Caso o arquivo não seja encontrado
             msgHeader = 'HTTP/1.1 404 File not found \r\n' '\r\n'
-            clientSocket.sendall((msgHeader + "file not found").encode()) # Devolve a mensagem para o cliente
+            clientSocket.sendall((msgHeader + get_html_content("./Erros/404.html")).encode()) # Devolve a mensagem para o cliente
             clientSocket.close() # Fecha a coneção com o cliente
             return
 
@@ -57,8 +61,7 @@ def handleRequest(clientSocket, clientAdress):
 
     # Se for uma pasta
     if os.path.isdir(searched_file):
-        html_file = open("index.html", 'r', encoding='utf-8') # Abre o html universal para listar os arquivos
-        html_base = html_file.read() # File content recebe um html
+        html_base = get_html_content("index.html") # Pega o conteúdo do html base para listar arquivos
         file_content = list_content(html_base, searched_file)
 
     msgHeader = 'HTTP/1.1 200 OK \r\n' '\r\n'
