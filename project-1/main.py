@@ -1,81 +1,86 @@
-import threading
 import socket
-import random
+import threading
 
-# Define a porta que os nós vão usar para se comunicar
-PORT = random.randint(1024, 65535)
+# Mensagens a serem enviadas
+messages = [
+    "Obra na BR-101",
+    "Obra na PE-015",
+    "Acidente Avenida Norte",
+    "Acidente Avenida Cruz Cabugá",
+    "Trânsito Intenso na Avenida Boa viagem",
+    "Trânsito Intenso na Governador Agamenon Magalhães",
+]
 
 
-class Node:
-    def __init__(self):
-        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server_socket.bind(('localhost', PORT))
-        self.server_socket.listen()
-        print(f"Nó funcionando na porta {PORT}")
+# Função para lidar com conexões recebidas
+def handle_client(client_socket, address):
+    print(f"Conexão estabelecida com {address}")
+    packets_received = 0
 
-        # Armazena todas as conexões ativas
-        self.connections = []
-
-        # Inicia uma thread para ouvir conexões
-        listening_thread = threading.Thread(target=self.listen_for_connections)
-        listening_thread.start()
-
-        # Inicia uma thread para permitir a entrada de comandos
-        self.command_thread = threading.Thread(target=self.handle_commands)
-        self.command_thread.start()
-
-    def listen_for_connections(self):
-        while True:
-            # Define o timeout para 5 segundos
-            self.server_socket.settimeout(5)
-            try:
-                # Aceita conexões dos outros pares
-                client_socket, address = self.server_socket.accept()
-                print(f"Nova conexão de endereço {address}")
-
-                # Adiciona a nova conexão na lista de conexões
-                self.connections.append(client_socket)
-
-                # Inicia uma thread para lidar com a nova conexão
-                client_thread = threading.Thread(
-                    target=self.handle_client, args=[client_socket])
-                client_thread.start()
-
-                # Exibe a mensagem para escrever uma mensagem
-                print("Escreva uma mensagem(ou digite 'exit' para sair):")
-            except socket.error as e:
-                # Em caso de erro, exiba a mensagem de erro e encerre a execução
-                print(f"Erro no socket: {e}")
+    while True:
+        try:
+            data = client_socket.recv(1024)
+            if not data:
                 break
 
-    def handle_client(self, client_socket):
-        while True:
-            # Recebe mensagens do cliente
-            data = client_socket.recv(1024)
+            packets_received += 1
+            message = data.decode("utf-8")
+            print(f"Recebido de {address}: {message}")
 
-            # Imprime a mensagem recebida
-            print(f"Mensagem recebida: : {data.decode()}")
+            if packets_received >= 6:
+                break
+        except:
+            break
 
-            # Encaminha a mensagem para os outros nós
-            for connection in self.connections:
-                if connection != client_socket:
-                    connection.sendall(data)
-
-    def handle_commands(self):
-        while True:
-            # Lê a entrada do usuário
-            command = input()
-            if command == "exit":
-                # Fecha todas as conexões e encerra o programa
-                for connection in self.connections:
-                    connection.close()
-                self.server_socket.close()
-                return
-            else:
-                # Envia o comando para todos os nós
-                for connection in self.connections:
-                    connection.sendall(command.encode())
+    print(f"Conexão encerrada com {address}")
+    client_socket.close()
 
 
-if __name__ == '__main__':
-    node = Node()
+# Função para iniciar o servidor
+def start_server(port):
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket.bind(("", port))
+    server_socket.listen(5)
+
+    print(f"Servidor ouvindo na porta {port}")
+
+    while True:
+        client_socket, address = server_socket.accept()
+        thread = threading.Thread(target=handle_client, args=(client_socket, address))
+        thread.start()
+
+
+# Função para conectar-se a outros nós e enviar mensagens
+def connect_and_send_messages(ip, port, messages_to_send):
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.connect((ip, port))
+
+    for message in messages_to_send:
+        client_socket.sendall(message.encode("utf-8"))
+
+    client_socket.close()
+
+
+def main():
+    local_port = int(input("Digite a porta local para ouvir conexões: "))
+    server_thread = threading.Thread(target=start_server, args=(local_port,))
+    server_thread.start()
+
+    while True:
+        action = input("Digite 'c' para conectar a um nó ou 'q' para sair: ")
+
+        if action.lower() == "c":
+            remote_ip = input("Digite o endereço IP remoto: ")
+            remote_port = int(input("Digite a porta remota: "))
+            message_indexes = input("Digite os índices das mensagens a serem enviadas (ex: 1,2,3): ")
+            message_indexes = list(map(int, message_indexes.split(",")))
+
+            messages_to_send = [messages[i - 1] for i in message_indexes]
+            connect_and_send_messages(remote_ip, remote_port, messages_to_send)
+        elif action.lower() == "q":
+            break
+
+
+if __name__ == "__main__":
+    main()
