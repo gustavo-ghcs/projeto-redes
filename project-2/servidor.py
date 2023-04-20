@@ -2,7 +2,6 @@ from socket import socket, AF_INET, SOCK_STREAM
 from threading import Thread
 import os
 
-
 # Lista o conteúdo de uma pasta no html
 def list_content(html, searched_file):
         tags = {"png": "&#128247;", "mp4": "&#127916;", "mpeg": "&#127925;", "pdf": "&#128212;"}
@@ -20,6 +19,24 @@ def list_content(html, searched_file):
         html += '''</ul></body></html>'''
         return html.encode()
 
+# Checa se tem caracteres inválidos na header
+def invalid_characters(header):
+    for char in ['%7B', '%7D', '%'+'%', '%20', '[', ']', ':', '*', '?', '"', '<', '>', '|']:
+        if char in header:
+            return True
+    return False
+
+# Abre e retorna o conteúdo de um arquivo html
+def get_html_content(filename):
+    html_file = open(filename, 'r', encoding='utf-8')
+    return html_file.read()
+
+# Devolve a mensagem de erro para o cliente
+def return_error(clientSocket, error_code, error_msg):
+    msgHeader = f'HTTP/1.1 {error_code} {error_msg} \r\n' '\r\n'
+    clientSocket.sendall((msgHeader + get_html_content(f"./Erros/{error_code}.html")).encode()) # Devolve a mensagem para o cliente
+    clientSocket.close() # Fecha a coneção com o cliente
+
 # Trata as requisições dos clientes
 def handleRequest(clientSocket, clientAdress):
     clientRequest = clientSocket.recv(1024).decode() # Recebe a requisição do cliente
@@ -27,6 +44,15 @@ def handleRequest(clientSocket, clientAdress):
     header = clientRequest.split("\r\n")[0] # Recorta a header da solicitação
     if header == "GET / HTTP/1.1":
         searched_file = "./Pages"
+
+    elif header[-3:] != "1.1":
+        return_error(clientSocket, 505, "HTTP Version Not Supported")
+        return
+
+    elif invalid_characters(header):
+        return_error(clientSocket, 400, "Bad Request")
+        return
+
     else:
         try:
             searched_file = header.split()[1][1:] # Descobre qual arquivo foi solicitado
@@ -48,17 +74,14 @@ def handleRequest(clientSocket, clientAdress):
                 file = open(searched_file, 'r', encoding='utf-8')
 
         except FileNotFoundError: # Caso o arquivo não seja encontrado
-            msgHeader = 'HTTP/1.1 404 File not found \r\n' '\r\n'
-            clientSocket.sendall((msgHeader + "file not found").encode()) # Devolve a mensagem para o cliente
-            clientSocket.close() # Fecha a coneção com o cliente
+            return_error(clientSocket, 404, "Not Found")
             return
 
         file_content = file.read()
 
     # Se for uma pasta
     if os.path.isdir(searched_file):
-        html_file = open("index.html", 'r', encoding='utf-8') # Abre o html universal para listar os arquivos
-        html_base = html_file.read() # File content recebe um html
+        html_base = get_html_content("index.html") # Pega o conteúdo do html base para listar arquivos
         file_content = list_content(html_base, searched_file)
 
     msgHeader = 'HTTP/1.1 200 OK \r\n' '\r\n'
@@ -76,7 +99,7 @@ IP_ADRESS = "127.0.0.1"
 PORT_NUMBER = 8014
 
 myServerSocket = socket(AF_INET, SOCK_STREAM) # Criação do socket
-myServerSocket.bind((IP_ADRESS, PORT_NUMBER)) # Vincula nosso servidor a derterminada porta
+myServerSocket.bind((IP_ADRESS, PORT_NUMBER)) # Vincula nosso servidor a determinada porta
 myServerSocket.listen() # Servidor escutando por requisições
 print(f"Servidor ouvindo em {IP_ADRESS} : {PORT_NUMBER}")
 
