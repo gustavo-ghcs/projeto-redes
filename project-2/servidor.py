@@ -4,7 +4,7 @@ import os
 
 # Lista o conteúdo de uma pasta no html
 def list_content(html, searched_file):
-        tags = {"png": "&#128247;", "mp4": "&#127916;", "mpeg": "&#127925;", "pdf": "&#128212;"}
+        tags = {"png": "&#128247;", "mp4": "&#127916;", "mpeg": "&#127925;", "aac": "&#127925;", "wav": "&#127925;", "flac": "&#127925;", "mp3": "&#127925;", "pdf": "&#128212;", "txt": "&#128212;", "epub": "&#128212;", "odt": "&#128212;", "docx": "&#128212;", "rtf": "&#128212;"}
 
         for i in os.listdir(searched_file):
             if os.path.isdir(os.path.join(f'./{searched_file}', i)):
@@ -32,7 +32,7 @@ def get_html_content(filename):
     return html_file.read()
 
 # Devolve a mensagem de erro para o cliente
-def return_error(clientSocket, error_code, error_msg):
+def error_message(clientSocket, error_code, error_msg):
     msgHeader = f'HTTP/1.1 {error_code} {error_msg} \r\n' '\r\n'
     clientSocket.sendall((msgHeader + get_html_content(f"./Erros/{error_code}.html")).encode()) # Devolve a mensagem para o cliente
     clientSocket.close() # Fecha a coneção com o cliente
@@ -46,23 +46,24 @@ def handleRequest(clientSocket, clientAdress):
         searched_file = "./Pages"
 
     elif header[-3:] != "1.1":
-        return_error(clientSocket, 505, "HTTP Version Not Supported")
-        return
+        return error_message(clientSocket, 505, "HTTP Version Not Supported")
 
     elif invalid_characters(header):
-        return_error(clientSocket, 400, "Bad Request")
-        return
+        return error_message(clientSocket, 400, "Bad Request")
 
     else:
         try:
             searched_file = header.split()[1][1:] # Descobre qual arquivo foi solicitado
+            if searched_file == "Pages/Adm":
+                return error_message(clientSocket, 403, "Forbidden")
+
         except IndexError:
             return # Retorna porque não requisitou nada
 
     extension = searched_file.split(".")[-1] # Pega a extensão do arquivo solicitado
 
     is_binary = True
-    if extension in ["html", "css", "js"]:
+    if extension in ["html", "htm", "css", "js"]:
         is_binary = False
 
     # Se for um arquivo
@@ -74,8 +75,7 @@ def handleRequest(clientSocket, clientAdress):
                 file = open(searched_file, 'r', encoding='utf-8')
 
         except FileNotFoundError: # Caso o arquivo não seja encontrado
-            return_error(clientSocket, 404, "Not Found")
-            return
+            return error_message(clientSocket, 404, "Not Found")
 
         file_content = file.read()
 
