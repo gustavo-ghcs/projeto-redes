@@ -1,62 +1,73 @@
-import socket
 import threading
 import time
+from Crypto.Cipher import DES3
+from Crypto.Signature import DSS
+from Crypto.Hash import SHA3_224
+from Crypto.PublicKey import ECC
+from Crypto import Random
 
-# Função para lidar com cada conexão de cliente
-def handle_client(socket_cliente, endereco):
-    # Exibe uma mensagem informando que uma conexão foi estabelecida
+
+def handle_client(socket_cliente, endereco, key_privada):
     print(f"\n***Conexão estabelecida com {endereco}***")
 
     while True:
         try:
-            # Recebe dados do cliente
             data = socket_cliente.recv(1024)
             if not data:
                 break
 
-            # Converte os dados em uma string e exibe a mensagem recebida
             mensagem = data.decode("utf-8")
-            print(f"Recebido de {endereco}: {mensagem}")
+            partes_msg = mensagem.split(":")
+            msg_criptografada = partes_msg[0]
+            assinatura = partes_msg[1]
+            iv = partes_msg[2]
 
-            # Envia uma mensagem de confirmação de reecebimento
-            msg_confirmacao = "Mensagem recebida!"
+            # Verificar assinatura digital da mensagem
+            h = SHA3_224.new()
+            h.update(msg_criptografada.encode())
+            verificador = DSS.new(key_privada, 'fips-186-3')
+            if not verificador.verify(h, assinatura):
+                print("A mensagem recebida não é autêntica. Descartando.")
+                break
+
+            # Descriptografar mensagem
+            cipher = DES3.new(iv.encode(), DES3.MODE_CBC, iv.encode())
+            msg_descriptografada = cipher.decrypt(msg_criptografada.encode()).decode().strip()
+
+            print(f"Recebido de {endereco}: {msg_descriptografada}")
+
+            # Enviar mensagem de confirmação de recebimento
+            msg_confirmacao = "Mensagem recebida! "
             socket_cliente.sendall(msg_confirmacao.encode("utf-8"))
         except:
             break
 
-    # Exibe uma mensagem informando que a conexão foi encerrada
     print(f"\n***Conexão encerrada com {endereco}***")
-
-    # Pergunta ao usuário se ele deseja se conectar a outro nó ou sair do programa
-    print("\nDigite 'c' para conectar-se  a um nó e enviar a lista de mensagens, ou digite 's' para sair do programa, ou aguarde uma mensagem de outro nó: \n")
-
-    # Fecha a conexão com o cliente
+    print("\nDigite 'c' para conectar-se a um nó e enviar a lista de mensagens, ou digite 's' para sair do programa, ou aguarde uma mensagem de outro nó: \n")
     socket_cliente.close()
 
 
 # Função para iniciar o servidor do nó
-def start_server(porta):
-    # Cria um objeto socket para o servidor e o configura para reutilizar endereços
+def start_server(porta, key_privada):
     socket_servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     socket_servidor.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     socket_servidor.bind(("", porta))
-
-    # Inicia o servidor e o coloca em modo de espera por conexões
     socket_servidor.listen(5)
 
-    # Exibe uma mensagem informando que o servidor está ouvindo na porta especificada
     print(f"***Servidor do nó ouvindo na porta {porta}***\n")
 
     while True:
-        # Aceita uma conexão de cliente e cria uma nova thread para lidar com ela
         socket_cliente, endereco = socket_servidor.accept()
         thread = threading.Thread(
-            target=handle_client, args=(socket_cliente, endereco))
+            target=handle_client, args=(socket_cliente, endereco, key_privada))
         thread.start()
 
 
-# Função para conectar-se a outros nós e enviar mensagens
 def connect_and_send_messages(ip, porta):
+    # Gerar chave privada e pública para ECC
+    key_privada = ECC.generate(curve='prime224v1')
+    chave_publica = key_privada.chave_publica()
+
     # Mensagens a serem enviadas
     mensagens = [
         "Obra na BR-101",
@@ -66,23 +77,45 @@ def connect_and_send_messages(ip, porta):
         "Trânsito Intenso na Avenida Boa viagem",
         "Trânsito Intenso na Governador Agamenon Magalhães",
     ]
+
+    # Definir chave e IV para TDES
+    chave_tdes = b"ThisIsASecretKey1234567890"
+    iv = b"12345678"
+
+    # Criar objeto TDES com a chave e IV definidos
+    tdes_cipher = DES3.new(chave_tdes, DES3.MODE_CBC, iv)
+
+    # Conectar ao outro nó
     socket_cliente = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     socket_cliente.connect((ip, porta))
     contador = 0
 
     while contador <= len(mensagens):
         for i in range(contador):
-            texto = mensagens[i]
-            socket_cliente.sendall(texto.encode("utf-8"))
-            time.sleep(0.2)
+            # Encriptar a mensagem com TDES
+            texto_simples = mensagens[i].encode('utf-8')
+            padded_plaintext = texto_simples + b"\0" * (8 - len(texto_simples) % 8)
+            ciphertext = tdes_cipher.encrypt(padded_plaintext)
+
+            # Hash da mensagem com SHA3-224
+            h = SHA3_224.new()
+            h.update(ciphertext)
+            digest = h.digest()
+
+            # Assinar o hash com a chave privada ECC
+            assinatura = key_privada.sign(digest)
+
+            # Enviar mensagem encriptada, hash e assinatura
+            data = (ciphertext, digest, assinatura, chave_publica)
+            socket_cliente.sendall(str(data).encode('utf-8'))
 
             # Receber mensagem de confirmação de recebimento
             msg_confirmacao = socket_cliente.recv(1024).decode("utf-8")
             print(msg_confirmacao)
 
         contador += 2
-    socket_cliente.close()
 
+    socket_cliente.close()
 
 def main():
     try:
@@ -116,5 +149,6 @@ def main():
         print("\n**Ops! Parece que aconteceu um erro, verifique a porta inserida e tente novamente.\n")
         # Recomeçar a função main
         main()
+
 
 main()
