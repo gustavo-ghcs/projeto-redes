@@ -10,17 +10,17 @@ def handle_client(socket_cliente, endereco):
     while True:
         try:
             # Recebe dados do cliente
-            data = socket_cliente.recv(1024)
-            if not data:
+            dado = socket_cliente.recv(1024)
+            if not dado:
                 break
 
             # Converte os dados em uma string e exibe a mensagem recebida
-            mensagem = data.decode("utf-8")
+            mensagem = dado.decode("utf-8")
             print(f"Recebido de {endereco}: {mensagem}")
 
             # Envia uma mensagem de confirmação de reecebimento
-            msg_confirmacao = "Mensagem recebida!"
-            socket_cliente.sendall(msg_confirmacao.encode("utf-8"))
+            mensagem_confirmacao = "Mensagem recebida pelo destinatário!"
+            socket_cliente.sendall(mensagem_confirmacao.encode("utf-8"))
         except:
             break
 
@@ -28,18 +28,18 @@ def handle_client(socket_cliente, endereco):
     print(f"\n***Conexão encerrada com {endereco}***")
 
     # Pergunta ao usuário se ele deseja se conectar a outro nó ou sair do programa
-    print("\nDigite 'c' para conectar-se  a um nó e enviar a lista de mensagens, ou digite 's' para sair do programa, ou aguarde uma mensagem de outro nó: \n")
+    print("\nDigite 'c' para conectar-se a um nó e enviar a lista de mensagens, ou digite 's' para sair do programa, ou aguarde uma mensagem de outro nó: \n")
 
     # Fecha a conexão com o cliente
     socket_cliente.close()
 
 
 # Função para iniciar o servidor do nó
-def start_server(porta):
+def start_server(porta, ip):
     # Cria um objeto socket para o servidor e o configura para reutilizar endereços
     socket_servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     socket_servidor.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    socket_servidor.bind(("", porta))
+    socket_servidor.bind((ip, porta))
 
     # Inicia o servidor e o coloca em modo de espera por conexões
     socket_servidor.listen(5)
@@ -77,8 +77,8 @@ def connect_and_send_messages(ip, porta):
             time.sleep(0.2)
 
             # Receber mensagem de confirmação de recebimento
-            msg_confirmacao = socket_cliente.recv(1024).decode("utf-8")
-            print(msg_confirmacao)
+            mensagem_confirmacao = socket_cliente.recv(1024).decode("utf-8")
+            print(mensagem_confirmacao)
 
         contador += 2
     socket_cliente.close()
@@ -86,11 +86,15 @@ def connect_and_send_messages(ip, porta):
 
 def main():
     try:
+        # Definindo o IP como localhost, para que ela possa s
+        ip = "localhost"
         # Obter a porta local do usuário
-        porta_local = int(input("Digite a porta local para que este nó ouça conexões de outros nós: "))
+        porta_local = int(
+            input("Digite a porta local para que este nó ouça conexões de outros nós: "))
 
         # Iniciar servidor em uma thread separada
-        thread_servidor = threading.Thread(target=start_server, args=(porta_local,))
+        thread_servidor = threading.Thread(
+            target=start_server, args=(porta_local, ip))
         thread_servidor.start()
 
         # Aguardar 0.3 segundos para que o servidor possa ser iniciado
@@ -98,15 +102,17 @@ def main():
 
         while True:
             # Obter acao desejada pelo usuário
-            acao = input("\nDigite 'c' para conectar-se a um nó e enviar a lista de mensagens, ou digite 's' para sair do programa, ou aguarde uma mensagem de outro nó: \n")
+            acao = input(
+                "\nDigite 'c' para conectar-se a um nó e enviar a lista de mensagens, ou digite 's' para sair do programa, ou aguarde uma mensagem de outro nó: \n")
 
             if acao.lower() == "c":
                 # Conectar-se a outro nó e enviar mensagens
-                ip = "localhost"
-                porta_remota = int(input("Digite a porta remota do nó para o qual deseja enviar mensagens: "))
+                porta_remota = int(
+                    input("Digite a porta remota do nó para o qual deseja enviar mensagens: "))
                 connect_and_send_messages(ip, porta_remota)
             elif acao.lower() == "s":
                 # Sair do programa
+                print("\n**Programa encerrado.**")
                 break
             else:
                 # Ação inválida
@@ -116,5 +122,6 @@ def main():
         print("\n**Ops! Parece que aconteceu um erro, verifique a porta inserida e tente novamente.\n")
         # Recomeçar a função main
         main()
+
 
 main()
