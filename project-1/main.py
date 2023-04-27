@@ -41,8 +41,8 @@ def start_server(porta, ip):
     socket_servidor.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     socket_servidor.bind((ip, porta))
 
-    # Inicia o servidor e o coloca em modo de espera por conexões
-    socket_servidor.listen(5)
+    # Inicia o servidor e o coloca em modo de espera por conexões, onde o número máximo de conexões pendentes permitidas é definido pelo sistema operacional
+    socket_servidor.listen()
 
     # Exibe uma mensagem informando que o servidor está ouvindo na porta especificada
     print(f"***Servidor do nó ouvindo na porta {porta}***\n")
@@ -99,7 +99,6 @@ def main():
 
         # Aguardar 0.3 segundos para que o servidor possa ser iniciado
         time.sleep(0.3)
-
         while True:
             # Obter acao desejada pelo usuário
             acao = input(
@@ -122,6 +121,4 @@ def main():
         print("\n**Ops! Parece que aconteceu um erro, verifique a porta inserida e tente novamente.\n")
         # Recomeçar a função main
         main()
-
-
 main()
