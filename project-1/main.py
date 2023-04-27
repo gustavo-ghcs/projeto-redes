@@ -86,7 +86,7 @@ def connect_and_send_messages(ip, porta):
 
 def main():
     try:
-        # Definindo o IP como localhost, para que ela possa s
+        # Definindo o IP como localhost, para que ela possa utilizar nos nós da rede
         ip = "localhost"
         # Obter a porta local do usuário
         porta_local = int(
